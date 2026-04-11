@@ -1,0 +1,43 @@
+# Környezeti változók – SOHA ne kerüljön fel!
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtuális környezet
+venv/
+.venv/
+env/
+
+# AXON adatbázis – személyes adatokat tartalmaz
+axon.db
+*.db
+
+# AXON output és upload mappák – ügyfél kódok
+outputs/
+uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logok
+*.log
+logs/
+
+# Souls – opcionális, ha saját promptokat nem akarsz megosztani
+# souls/
