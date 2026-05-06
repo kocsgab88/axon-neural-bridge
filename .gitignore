@@ -1,0 +1,33 @@
+# Secrets
+.env
+*.txt
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Generated outputs
+outputs/
+uploads/
+logs/
+
+# Old / temp
+temp_old/
+archive/
+
+# Portfolio / demo projektek (külön repo-k)
+portfolio/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code session
+.claude/
