@@ -1,6 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 AXON Neural Bridge — Application Entry Point
 =============================================
+
+Copyright (c) 2026 Kocsis Gábor. All rights reserved.
+Licensed under AXON Source Available License v1.0.
+
+This file is part of AXON Neural Bridge.
+See LICENSE.md for licensing terms.
+Commercial use requires separate license: kocsgab88@gmail.com
+
+---
+
 v9.0
 
 Ez a fájl az egyetlen "composition root":
@@ -117,7 +129,7 @@ class Config:
             return val
 
         return cls(
-            telegram_token = require("TELEGRAM_TOKEN"),
+            telegram_token = os.getenv("TELEGRAM_TOKEN", ""),
             anthropic_key  = require("ANTHROPIC_KEY"),
             gemini_key     = require("GEMINI_KEY"),
             base_dir       = base_dir,
@@ -645,6 +657,10 @@ def main() -> None:
         config = Config.from_env(base_dir)
     except ValueError as e:
         log.critical(f"Konfiguráció hiba: {e}")
+        sys.exit(1)
+
+    if not config.telegram_token:
+        log.critical("Hiányzó kötelező környezeti változó: TELEGRAM_TOKEN\nEllenőrizd a .env fájlt!")
         sys.exit(1)
 
     # AppContext szinkron része (soul loader, dirs)

@@ -1,11 +1,23 @@
-# Secrets
+# === ENVIRONMENT & SECRETS ===
 .env
+_env
 *.txt
 
-# Database
+# === PROPRIETARY DATASETS (NEVER PUSH) ===
+axon.db
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+
+# === STRATEGIC DOCUMENTS (NEVER PUSH) ===
+AXON_MASTER_BRIEF.md
+AXON_GENESIS_VISION.md
+AXON_5YEAR_COST_PROJECTION.md
+AXON_DECISION_FRAMEWORKS.md
+session/
+strategic/
 
 # Python
 __pycache__/

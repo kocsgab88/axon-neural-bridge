@@ -1,6 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 AXON Neural Bridge — Core Pipeline Orchestrator
 =================================================
+
+Copyright (c) 2026 Kocsis Gábor. All rights reserved.
+Licensed under AXON Source Available License v1.0.
+
+This file is part of AXON Neural Bridge.
+See LICENSE.md for licensing terms.
+Commercial use requires separate license: kocsgab88@gmail.com
+
+---
+
 v9.0
 
 A run_developer_pipeline() 550 soros monolitjából 5 izolált osztály:

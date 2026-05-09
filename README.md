@@ -297,6 +297,33 @@ python -m pytest tests/ -v --asyncio-mode=auto
 
 **Why modular architecture (v9.0)?** The original monolith made individual components untestable and tightly coupled to Telegram. The 5-class split makes each component independently testable, replaceable, and runnable outside the bot context.
 
-## License
+## 📄 License
 
-MIT
+**AXON Neural Bridge** is licensed under a proprietary Source Available License.
+
+- ✅ **Free for personal use** (learning, education, personal projects)
+- ✅ **Source code visible** (study, review, contribute)
+- ❌ **Commercial use requires licensing** (contact for pricing)
+- 🔒 **Training corpus proprietary** (not included in repository)
+
+For commercial licensing inquiries:
+- 📧 Email: kocsgab88@gmail.com
+- 🐙 GitHub: [@kocsgab88](https://github.com/kocsgab88)
+
+See [LICENSE.md](LICENSE.md) for full terms.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! By submitting a Pull Request, you agree to the
+Contributor License Agreement (see LICENSE.md Section 5).
+
+Please ensure:
+- All tests pass (`pytest`)
+- Code follows existing style
+- Commits are descriptive
+
+---
+
+© 2026 Kocsis Gábor. All rights reserved.
