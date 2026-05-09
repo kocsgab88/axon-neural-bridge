@@ -2,7 +2,7 @@
 
 A Telegram-based AI pipeline that generates, validates, and audits Python automation code — built for freelance delivery.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue) ![Claude](https://img.shields.io/badge/Claude-Sonnet_4.6-purple) ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-green) ![Version](https://img.shields.io/badge/version-9.1-orange) ![Tests](https://img.shields.io/badge/tests-48%2F48-brightgreen)
+![Python](https://img.shields.io/badge/Python-3.10+-blue) ![Claude](https://img.shields.io/badge/Claude-Sonnet_4.6-purple) ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-green) ![Version](https://img.shields.io/badge/version-9.1-orange) ![Tests](https://img.shields.io/badge/tests-251%2F251-brightgreen)
 
 ## What is AXON?
 
@@ -229,7 +229,7 @@ python -m pytest tests/ -v --asyncio-mode=auto
 - Dead code removed: `axon_main()` stub deleted
 - Test infrastructure: Linux path fix across all 5 test files (Windows-compatible)
 - 10 new tests added: `TestOutputWriter`, `test_false_positive_protection`, `test_discard_pops_tokens_without_logging`
-- **48/48 tests passing**
+- **251/251 tests passing**
 
 ### v9.0 — 2026-04-30
 - Full modular refactor: 550-line monolith → 5 isolated classes (`CodeGenerator`, `AuditFixLoop`, `OutputWriter`, `CostAccumulator`, `DeveloperPipeline`)
