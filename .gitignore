@@ -1,43 +1,45 @@
-# Környezeti változók – SOHA ne kerüljön fel!
+# === ENVIRONMENT & SECRETS ===
 .env
+_env
+*.txt
+
+# === PROPRIETARY DATASETS (NEVER PUSH) ===
+axon.db
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# === STRATEGIC DOCUMENTS (NEVER PUSH) ===
+AXON_MASTER_BRIEF.md
+AXON_GENESIS_VISION.md
+AXON_5YEAR_COST_PROJECTION.md
+AXON_DECISION_FRAMEWORKS.md
+session/
+strategic/
 
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-*.egg
+.pytest_cache/
 
-# Virtuális környezet
-venv/
-.venv/
-env/
-
-# AXON adatbázis – személyes adatokat tartalmaz
-axon.db
-*.db
-
-# AXON output és upload mappák – ügyfél kódok
+# Generated outputs
 outputs/
 uploads/
+logs/
+
+# Old / temp
+temp_old/
+archive/
+
+# Portfolio / demo projektek (külön repo-k)
+portfolio/
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Logok
-*.log
-logs/
-
-# Souls – opcionális, ha saját promptokat nem akarsz megosztani
-# souls/
+# Claude Code session
+.claude/

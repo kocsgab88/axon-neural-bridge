@@ -44,11 +44,9 @@ class AxonWatchman:
 
     def _get_system_info(self) -> dict:
         """Rendszer állapot lekérdezése."""
-        import platform
-        _disk_path = "C:\\" if platform.system() == "Windows" else "/"
         cpu    = psutil.cpu_percent(interval=2)
         ram    = psutil.virtual_memory()
-        disk   = psutil.disk_usage(_disk_path)
+        disk   = psutil.disk_usage("C:\\")
 
         return {
             "cpu":       cpu,
@@ -133,10 +131,9 @@ def get_system_status_message() -> str:
     """Részletes rendszer státusz üzenet Telegramra."""
     try:
         import platform
-        _disk_path = "C:\\" if platform.system() == "Windows" else "/"
         cpu    = psutil.cpu_percent(interval=1)
         ram    = psutil.virtual_memory()
-        disk   = psutil.disk_usage(_disk_path)
+        disk   = psutil.disk_usage("C:\\")
 
         cpu_icon  = "🔥" if cpu  >= CPU_WARN_PERCENT  else "📊"
         ram_icon  = "🔥" if ram.percent >= RAM_WARN_PERCENT  else "🧠"
