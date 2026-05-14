@@ -12,7 +12,7 @@ Karbantartás:
 #  CONTEXT VERZIÓ – növeld eggyel ha megváltozik a kontextus!
 #  Ez automatikusan érvényteleníti a régi cache bejegyzéseket.
 # ═══════════════════════════════════════════════════════════════
-CONTEXT_VERSION = "7"   # ← ezt növeld ha frissíted a kontextust
+CONTEXT_VERSION = "8"   # ← v8.3 frissítés (volt: "7")
 
 # ═══════════════════════════════════════════════════════════════
 #  AXON PROJEKT KONTEXTUS
@@ -21,92 +21,93 @@ CONTEXT_VERSION = "7"   # ← ezt növeld ha frissíted a kontextust
 AXON_PROJECT_CONTEXT = """
 ## AXON Neural Bridge – Projekt kontextus
 
-**Tulajdonos:** Kocsis Gábor, Budapest (villamos elosztó tábla szerelő csoportvezető, Python automatizálás és AI fejlesztő szabadúszóként)
+**Tulajdonos:** Kocsis Gábor, Budapest (villamosipari csoportvezető, SPIE Hungaria Kft. | Python automatizálás és AI fejlesztő szabadúszóként)
 
-**Projekt célja:** Telegram-alapú AI automatizálási platform → szabadúszó bevétel generálás Upwork-ön (Python automatizálás, SRE feladatok)
+**Projekt célja:** Telegram-alapú AI automatizálási platform → szabadúszó bevétel generálás Upwork-ön (Python automatizálás, n8n workflow, Make.com automatizálás)
 
-**Jelenlegi dátum:** 2026. április 9.
 **Jelenlegi verzió:** AXON v8.4 – ÉLES
+**Platform:** Windows (Asus X550JX laptop) | Fejlesztési nyelv: Magyar
 
-**Aktív fájlok:**
+**Aktív fájlok (AXON_OPS/AxonV2/):**
 - axon_telegram_v6.py – fő bot (v8.4)
-- axon_sandbox_v2.py – kód validáció (MagicMock alapú)
-- axon_auditor_v2.py – Gemini audit
-- axon_memory.py – adatbázis, cache, training data, history perzisztencia
-- axon_watchman.py – SRE háttérfigyelés
-- axon_retry.py – exponenciális backoff retry
-- axon_compaction.py – history tömörítés
+- axon_sandbox_v2.py – kód validáció (v3.2, MagicMock alapú)
+- axon_auditor_v2.py – Gemini cross-audit (gemini-2.5-flash)
+- axon_memory.py – adatbázis, cache, training data, cost tracking, history perzisztencia (v8.4)
+- axon_retry.py – exponenciális backoff retry engine (v8.0)
+- axon_compaction.py – conversation history compaction (v8.1)
+- axon_watchman.py – SRE háttérfigyelés (PTB JobQueue)
 - axon_context.py – projekt kontextus (ez a fájl)
+- souls/ – 4 pipeline persona fájl (DEVELOPER, PLANNER, CREATIVE, ANALYST)
 
-**Output mappa:** `outputs/` (a script mappájában, automatikusan létrejön)
-- Minden sikeres DEVELOPER futás ide menti a teljes kódot .py fájlba
-- Fájlnév formátum: YYYYMMDD_HHMMSS_feladat_rövid.py
+**Output/Upload mappák:** ./outputs/ és ./uploads/ (a bot mappájához relatív)
+- Minden sikeres DEVELOPER futás: {timestamp}_{feladat}.py + {timestamp}_{feladat}_README.md
+- Fájl fogadás: CSV, JSON, Excel, TXT, XML, YAML, SQL
 
 **Adatbázis:** axon.db (SQLite)
-- task_cache – sikeres feladatok cache-e (SHA-256 hash + context verzió)
+- task_cache – sikeres feladatok cache-e (SHA-256 hash + context verzió, 30 nap TTL)
 - training_data – minden futás tanítóadata
-- fix_samples – bad_code → fixed_code párok (fine-tuning alap)
-- daily_stats – napi összesítő
+- fix_samples – bad_code → gemini_issues → fixed_code párok (few-shot alap)
+- daily_stats – napi összesítő (review_count is)
+- api_costs – API hívás költségek pipeline bontásban (v8.3)
 - config – OWNER_CHAT_ID és beállítások
 - seen_jobs – Scout által látott Upwork job ID-k (deduplikáció)
 
 **AI modellek:**
 - Claude: claude-sonnet-4-6 ($3/M input, $15/M output)
-- Gemini: gemini-2.5-flash (audit, ~$0.01/nap)
+- Gemini: gemini-2.5-flash (audit – paid tier, Google nem tanulja a promptokat)
 
-**API egyenleg (2026.03.20.): Claude ~$22.76 | Gemini ~$0.08/hó
-
-**Multi-expert pipeline (v5.3):**
-- DEVELOPER → kód generálás (sandbox + Gemini audit, cache)
-- PLANNER   → tervek, dokumentáció (markdown, cache)
-- CREATIVE  → szövegek, levelek (egyedi, NINCS cache)
-- ANALYST   → adatelemzés, számítások (cache)
+**Multi-expert pipeline (v5.3+):**
+- DEVELOPER → kód generálás (sandbox + Gemini audit, cache ✅, history ✅)
+- PLANNER   → tervek, dokumentáció (markdown, cache ✅, history ✅)
+- CREATIVE  → szövegek, cover letterek (egyedi, NINCS cache ❌, NINCS history ❌)
+- ANALYST   → adatelemzés, számítások (cache ✅, history ✅)
 
 **Validációs pipeline (DEVELOPER – 3 szint):**
-1. Statikus biztonsági szűrő (RISK_KEYWORDS)
-2. Sandbox unit tesztek (Python subprocess)
-3. Gemini logikai audit (55/100 PASS küszöb)
+1. Statikus biztonsági szűrő (FORBIDDEN_PATTERNS + RISK_KEYWORDS)
+2. Sandbox unit tesztek (Python subprocess, MagicMock infrastructure stubok)
+3. Gemini logikai audit (60/100 PASS küszöb | /review: 70/100 szigorúbb)
 
 **Multi-session generálás:**
 - SIMPLE feladat → 2 session (kód + tesztek)
 - COMPLEX feladat → 4 session (S1: struktúra, S2: logika, S3a: összefűzés, S3b: tesztek)
 
-**Sandbox mock lefedés (v3.1 – MagicMock alapú):**
-- psycopg2/psycopg: MagicMock conn+cursor, fetchall, fetchmany, fetchone, closed,
-  set_session, set_isolation_level, autocommit, extensions, sql alias, exception alias-ok
-- gspread + Google OAuth2: worksheet, get_all_records, append_row, service_account
-- boto3/botocore: S3 client, upload_file, download_file, list_objects_v2
-- redis: get, set, delete, exists, hget, hset, from_url
-- smtplib/imaplib: SMTP, SMTP_SSL, starttls, login, sendmail
-- pymongo: MongoClient, find, find_one, insert_one, update_one
-- requests: get, post, put, delete, patch, Response mock
-- SQLAlchemy: create_engine, sessionmaker, Session, Column típusok (v3.1+)
-- httpx/aiohttp: async HTTP kliens mock (v3.1+)
+**Sandbox mock lefedés (v3.2 – MagicMock alapú):**
+- psycopg2/psycopg, gspread + Google OAuth2, boto3/botocore (S3)
+- redis, smtplib/imaplib, pymongo, requests
+- SQLAlchemy: create_engine, sessionmaker, Column típusok
+- httpx/aiohttp: async HTTP kliens mock
 - Logging fix: logging.disable(CRITICAL) – generált kód nem szól bele az AXON logjába
-- Windows fix: stdout/stderr PIPE dekódolás, py_compile fallback
 
-**Upwork stratégia (frissített):**
-- Célpiac: Python automatizálás, PostgreSQL/Sheets integráció, adatfeldolgozás, CSV/ETL
-- Megközelítés: TÚLKÉPZÉS – AXON $200-300 szintű feladatokra képes → $80-100 munkák garantált
-- Első munkák: fix áras, deliverable egy Python fájl vagy CSV amit ellenőrizni lehet
-- Sorrend: Sports Card CSV ($100) és Python Rules Engine ($150) ajánlat kész
-- Profil neve: Gábor Kocsis | Python Automation Engineer | AI Workflow & API Integration
+**v8.x fejlesztések:**
+- v8.0: axon_retry.py – exponenciális backoff (max 3 kísérlet, 200ms–2s)
+- v8.1: axon_compaction.py – history tömörítés 6000 kar felett, /compact parancs
+- v8.2: SOUL.md loader (souls/ mappa), /upwork ConversationHandler wizard, Watchman → PTB JobQueue
+- v8.3: Pipeline cost tracker – api_costs tábla pipeline oszloppal, GROUP BY pipeline /stats-ban
+- v8.4: Path fix (Path(__file__).parent alapú), History SQLite perzisztencia (restart-safe)
 
-**Ismert technikai adósság (etikus hacker barát – szeptember-október):**
-- API kulcsok hardcodeolva → .env-re kellene átállítani
-- axon.db titkosítatlan
-- Rate limiting nincs
+**Telegram parancsok:**
+/start /stop /help /status /stats /history /clear /compact /review /cache_clear /bypass /files /upwork
 
-**Tervezett fejlesztések (prioritás sorrendben):**
-1. Spending cap beállítása (Claude Console + Google AI Studio)
-2. Upwork Scout cookie mentés első indításkor (--save-cookies)
-3. Fine-tuning local modellekkel a fix_samples alapján
-4. Dell OptiPlex 7071 upgrade (i9-9900, 32GB RAM) – ha bevétel jön
+**Upwork stratégia:**
+- Jelenlegi státusz: 0 review, live profil – első review kritikus mérföldkő
+- Aktív propozálok: Hedra B-roll ($150), PDF spare parts ($300), GoHighLevel n8n (~$125)
+- Célpiac: Python automatizálás, n8n workflow, Make.com, PostgreSQL/Sheets integráció
+- Három platform stack: Python (AXON) + n8n + Make.com
+- Stratégiai niche: logistics/supply chain automation
+
+**GitHub portfólió:**
+- au-business-scraper ✅ Live
+- python-automation-toolkit ✅ Live
+- n8n-automation-workflows ✅ Live (workflows/ struktúra rendben)
+- axon-neural-bridge ❌ Tervezett (kényes adatok nélkül)
 
 **TITAN projekt:** Létezik, de SZIGORÚAN elkülönítve – soha nem keveredhet az AXON kóddal.
 
-**Fejlesztési nyelv:** Magyar (kommentek, logok, Telegram üzenetek)
-**Platform:** Windows (Asus X550JX laptop)
+**Tervezett fejlesztések (v8.5+):**
+1. Few-shot pre-selection mini Claude hívással (fix_samples prompt augmentáció)
+2. Auto Case Study generálás sikeres DEVELOPER futás után
+3. Skill Tree – sikeresen használt könyvtárak nyilvántartása
+4. Service layer + modul szétbontás (v9.0)
 """
 
 
@@ -135,9 +136,11 @@ def get_context_for_pipeline(pipeline: str) -> str:
             "**A te szereped (CREATIVE pipeline):**\n"
             "Profi szövegíró és kommunikációs szakértő vagy, aki az AXON projekt kontextusát ismeri.\n"
             "Gábor személyében írsz – tapasztalt Python/AI fejlesztő, Budapest, szabadúszó.\n"
-            "Specialitás: Python automatizálás, AI integráció, Telegram botok, adatfeldolgozás.\n"
+            "Specialitás: Python automatizálás, AI integráció, n8n workflow, Make.com, Telegram botok, adatfeldolgozás.\n"
             "Stílus: professzionális de személyes, konkrét, nem általánoskodó.\n"
-            "Minden szöveg egyedi – soha nem sablon."
+            "Cover letter stílus: rövid, magabiztos, technikailag specifikus – soha nem bullet lista, soha nem 'proficient in X, Y, Z'.\n"
+            "Minden szöveg egyedi – soha nem sablon.\n"
+            "Válaszolj angolul (Upwork kommunikáció) hacsak nem kérik a magyart."
         )
     elif pipeline == "ANALYST":
         return (
@@ -149,4 +152,5 @@ def get_context_for_pipeline(pipeline: str) -> str:
             "Válaszolj magyarul."
         )
     else:
+        # DEVELOPER és minden egyéb pipeline az alap kontextust kapja
         return base

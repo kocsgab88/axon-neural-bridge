@@ -427,12 +427,18 @@ def init_db():
             timestamp   DATETIME DEFAULT CURRENT_TIMESTAMP,
             date        TEXT,
             task        TEXT,
+            pipeline    TEXT DEFAULT 'DEVELOPER',
             input_tok   INTEGER DEFAULT 0,
             output_tok  INTEGER DEFAULT 0,
             cost_usd    REAL DEFAULT 0.0,
             calls       INTEGER DEFAULT 1
         )
     """)
+    # v8.3 migration: pipeline oszlop hozzáadása meglévő adatbázishoz
+    try:
+        cursor.execute("ALTER TABLE api_costs ADD COLUMN pipeline TEXT DEFAULT 'DEVELOPER'")
+    except Exception:
+        pass  # már létezik – nem baj
 
     db.commit()
     db.close()
@@ -664,6 +670,23 @@ def purge_expired_cache() -> int:
         return 0
 
 
+def purge_all_cache() -> int:
+    """Teljes cache törlése — /cache_clear parancshoz."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) FROM task_cache")
+        total = cursor.fetchone()[0]
+        cursor.execute("DELETE FROM task_cache")
+        db.commit()
+        db.close()
+        log.info(f"[CACHE] Teljes törlés: {total} bejegyzés eltávolítva")
+        return total
+    except Exception as e:
+        log.error(f"[CACHE] Purge all hiba: {e}")
+        return 0
+
+
 # ═══════════════════════════════════════════════════════════════
 #  MENTŐ FÜGGVÉNY (v1.0 – változatlan)
 # ═══════════════════════════════════════════════════════════════
@@ -872,7 +895,7 @@ def format_stats_message(stats: dict) -> str:
     )
 
 
-def log_task_cost(task: str, input_tokens: int, output_tokens: int, cost_usd: float, calls: int) -> None:
+def log_task_cost(task: str, input_tokens: int, output_tokens: int, cost_usd: float, calls: int, pipeline: str = "DEVELOPER") -> None:
     """
     Egy feladat teljes Claude API költségét menti el.
     A DEVELOPER pipeline végén hívandó (_pop_task_tokens után).
@@ -881,12 +904,12 @@ def log_task_cost(task: str, input_tokens: int, output_tokens: int, cost_usd: fl
         db = sqlite3.connect(DB_PATH)
         today = datetime.now().strftime("%Y-%m-%d")
         db.execute("""
-            INSERT INTO api_costs (date, task, input_tok, output_tok, cost_usd, calls)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (today, task[:200], input_tokens, output_tokens, cost_usd, calls))
+            INSERT INTO api_costs (date, task, pipeline, input_tok, output_tok, cost_usd, calls)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (today, task[:200], pipeline, input_tokens, output_tokens, cost_usd, calls))
         db.commit()
         db.close()
-        log.info(f"[COST] Feladat cost mentve: ${cost_usd:.4f} ({input_tokens}in/{output_tokens}out)")
+        log.info(f"[COST] Feladat cost mentve: ${cost_usd:.4f} ({input_tokens}in/{output_tokens}out) | {pipeline}")
     except Exception as e:
         log.error(f"[COST] Mentési hiba: {e}")
 
@@ -1164,3 +1187,187 @@ def format_cache_stats_message(cs: dict) -> str:
         f"💾 *Cache-elt feladatok:* {cs['cached_tasks']}\n"
         f"🏆 *Összes találat (all-time):* {cs['all_time_hits']}"
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+#  HISTORY PERZISZTENCIA – v8.4
+#  SQLite alapú mentés/visszatöltés bot restart után
+#  Bot restart → restore_history() → in-memory visszatöltve
+# ═══════════════════════════════════════════════════════════════
+
+from contextlib import contextmanager
+import uuid as _uuid
+
+@contextmanager
+def _db():
+    """
+    SQLite connection context manager – v8.4.
+    Auto-commit sikeres futás után, rollback hiba esetén.
+
+    Használat:
+        with _db() as conn:
+            conn.execute("INSERT INTO ...")
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+HISTORY_RETENTION_DAYS = 7   # ennél régebbi session-öket törli a cleanup
+
+
+def _ensure_history_table() -> None:
+    """Létrehozza a conversation_history táblát ha még nem létezik."""
+    try:
+        with _db() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS conversation_history (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id     TEXT NOT NULL,
+                    role        TEXT NOT NULL,
+                    content     TEXT NOT NULL,
+                    pipeline    TEXT DEFAULT 'DEVELOPER',
+                    task        TEXT,
+                    ts          REAL NOT NULL,
+                    session_id  TEXT,
+                    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_history_chat_id
+                ON conversation_history(chat_id, ts)
+            """)
+    except Exception as e:
+        log.error(f"[HISTORY] Tábla létrehozási hiba: {e}")
+
+
+# Tábla létrehozása importáláskor
+_ensure_history_table()
+
+
+def persist_history(chat_id: str) -> bool:
+    """
+    Az in-memory history-t elmenti SQLite-ba.
+    Bot restart után restore_history()-val visszatölthető.
+
+    Stratégia: teljes session felülírása (DELETE + INSERT)
+    → mindig konzisztens állapot, nincs duplikáció.
+
+    Returns:
+        True ha sikeres, False ha hiba
+    """
+    if chat_id not in _history:
+        return True
+
+    session = _history[chat_id]
+    turns = session.get("turns", [])
+
+    if not turns:
+        return True
+
+    try:
+        session_id = str(_uuid.uuid4())[:8]
+        with _db() as conn:
+            conn.execute(
+                "DELETE FROM conversation_history WHERE chat_id = ?",
+                (chat_id,)
+            )
+            for turn in turns:
+                conn.execute("""
+                    INSERT INTO conversation_history
+                        (chat_id, role, content, pipeline, task, ts, session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    chat_id,
+                    turn.get("role", "user"),
+                    turn.get("content", ""),
+                    turn.get("pipeline", "DEVELOPER"),
+                    turn.get("task"),
+                    turn.get("ts", time()),
+                    session_id
+                ))
+        log.debug(f"[HISTORY] Perzisztálva: {len(turns)} turn | chat: {chat_id}")
+        return True
+    except Exception as e:
+        log.error(f"[HISTORY] Perzisztálási hiba: {e}")
+        return False
+
+
+def restore_history(chat_id: str) -> int:
+    """
+    SQLite-ból visszatölti a history-t az in-memory dict-be.
+    Bot induláskor vagy /start parancsnál hívandó.
+
+    Returns:
+        Visszatöltött turn-ök száma (0 ha nincs mentett history)
+    """
+    try:
+        cutoff = time() - SESSION_TIMEOUT_SEC
+        with _db() as conn:
+            rows = conn.execute("""
+                SELECT role, content, pipeline, task, ts
+                FROM conversation_history
+                WHERE chat_id = ?
+                  AND ts >= ?
+                ORDER BY ts ASC
+            """, (chat_id, cutoff)).fetchall()
+
+        if not rows:
+            return 0
+
+        turns = []
+        for row in rows:
+            turns.append({
+                "role":     row[0],
+                "content":  row[1],
+                "pipeline": row[2],
+                "task":     row[3],
+                "ts":       row[4]
+            })
+
+        turns = _trim_history(turns)
+
+        _history[chat_id] = {
+            "turns":        turns,
+            "last_active":  time(),
+            "timeout_flag": False
+        }
+
+        log.info(f"[HISTORY] Visszatöltve: {len(turns)} turn | chat: {chat_id}")
+        return len(turns)
+
+    except Exception as e:
+        log.error(f"[HISTORY] Visszatöltési hiba: {e}")
+        return 0
+
+
+def cleanup_old_history(retention_days: int = HISTORY_RETENTION_DAYS) -> int:
+    """
+    Régi conversation history törlése SQLite-ból.
+    retention_days-nél régebbi bejegyzések törlődnek.
+    Watchman JobQueue-ban futtatható naponta egyszer.
+
+    Returns:
+        Törölt sorok száma
+    """
+    try:
+        cutoff = time() - (retention_days * 86400)
+        with _db() as conn:
+            cursor = conn.execute(
+                "DELETE FROM conversation_history WHERE ts < ?",
+                (cutoff,)
+            )
+            deleted = cursor.rowcount
+        if deleted > 0:
+            log.info(f"[HISTORY] Cleanup: {deleted} régi sor törölve ({retention_days} nap)")
+        return deleted
+    except Exception as e:
+        log.error(f"[HISTORY] Cleanup hiba: {e}")
+        return 0
